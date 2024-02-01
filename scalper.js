@@ -2,13 +2,22 @@ const mysql = require("mysql");
 const axios = require("axios");
 const cheerio = require("cheerio");
 
-require('dotenv').config();
+//require('dotenv').config();
 
-const connection = mysql.createConnection({
+const connection2 = mysql.createConnection({
   host: process.env.HOST,
   user: process.env.USER,
   password: process.env.PASSWORD,
   database: process.env.DATABASE,
+  port: 3306,
+  ssl: true
+});
+
+const connection = mysql.createConnection({
+  host: "",
+  user: "",
+  password: "",
+  database: "pcparts",
   port: 3306,
   ssl: true
 });
