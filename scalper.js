@@ -2,7 +2,7 @@ const mysql = require("mysql");
 const axios = require("axios");
 const cheerio = require("cheerio");
 
-//require('dotenv').config();
+require('dotenv').config();
 
 const connection2 = mysql.createConnection({
   host: process.env.HOST,
@@ -14,12 +14,12 @@ const connection2 = mysql.createConnection({
 });
 
 const connection = mysql.createConnection({
-  host: "",
-  user: "",
-  password: "",
-  database: "pcparts",
+  host: process.env.HOST2,
+  user: process.env.USER2,
+  password: process.env.PASSWORD2,
+  database: process.env.DATABASE2,
   port: 3306,
-  ssl: true
+  ssl: false
 });
 
 // Realizar la conexión a la base de datos
@@ -57,11 +57,11 @@ function runScript() {
         fetchDataAndUpdateDatabase(); // Ejecutar la función
       }
     }, 1000); // Contar cada segundo (1000 milisegundos)
-  }, 11000); // Esperar 11 segundos antes de iniciar el siguiente ciclo (10 segundos de cuenta regresiva + 1 segundo adicional)
+  }, 10000); // Esperar 11 segundos antes de iniciar el siguiente ciclo (10 segundos de cuenta regresiva + 1 segundo adicional)
 }
 
 function fetchDataAndUpdateDatabase() {
-  // Obtener los IDs de la tabla componentes
+  // Obtener los IDs y las URLs de la tabla componentes
   const query = `SELECT id, url FROM amazon`;
   connection.query(query, (error, results) => {
     if (error) {
@@ -69,40 +69,103 @@ function fetchDataAndUpdateDatabase() {
     } else {
       console.log("Número de registros obtenidos: ", results.length);
 
-      // Iterar sobre los resultados y hacer la solicitud HTTP y actualizar la base de datos para cada registro
+      // Iterar sobre los resultados y realizar web scraping según la URL
       results.forEach((result, index) => {
         const { id, url } = result;
 
         setTimeout(() => {
-          // Verificar si la URL contiene "t.ly/"
           if (url && url.includes("amazon")) {
-            // Realizar el webscraping adicional
-            axios.get(url)
-              .then((response) => {
-                const html = response.data;
-                const $ = cheerio.load(html);
-                const priceText = $(".a-price-whole").text(); // Obtener el valor del elemento adicional
-                const priceValues = priceText.split('.');
-                const firstPriceValue = priceValues[0];
-                const formattedPriceValue = firstPriceValue.replace(',', ''); // Corregir el formato del precio
-                console.log(formattedPriceValue);
-
-                // Actualizar la base de datos con el valor adicional
-                const updateQuery = `UPDATE amazon SET precio = '${formattedPriceValue}' WHERE id = ${id}`;
-                connection.query(updateQuery, (error, results) => {
-                  if (error) {
-                    console.error("Error al actualizar la base de datos: ", error);
-                  } else {
-                    console.log(`[${index + 1}] Actualización exitosa de la base de datos con el valor adicional`);
-                  }
-                });
-              })
-              .catch((error) => {
-                console.error(`[${index + 1}] Error al hacer la solicitud HTTP adicional: ${error}`);
-              });
+            // Realizar web scraping para Amazon
+            scrapAmazon(url, id, index);
+          } 
+            else if (url && url.includes("pcel")) {
+            // Realizar web scraping para PCEL
+            scrapPCEL(url, id, index);
           }
-        }, index * 10); // Retraso de 100 ms entre cada solicitud (index * 100 milisegundos)
+            else if (url && url.includes("cyberpuerta")) {
+            // Realizar web scraping para Cyberpuerta
+            scrapCyberpuerta(url, id, index);
+          }
+          // Agrega más condiciones para otros métodos de web scraping según sea necesario...
+        }, index * 10); // Retraso de 1 segundo entre cada solicitud (index * 1000 milisegundos)
       });
     }
+  });
+}
+
+function scrapAmazon(url, id, index) {
+  axios.get(url)
+    .then((response) => {
+      const html = response.data;
+      const $ = cheerio.load(html);
+      const priceText = $(".a-price-whole").text(); // Obtener el valor del elemento adicional
+      const priceValues = priceText.split('.');
+      const firstPriceValue = priceValues[0];
+      const formattedPriceValue = firstPriceValue.replace(',', ''); // Corregir el formato del precio
+      console.log(formattedPriceValue);
+
+      // Actualizar la base de datos con el valor adicional
+      const updateQuery = `UPDATE amazon SET precio = '${formattedPriceValue}' WHERE id = ${id}`;
+      connection.query(updateQuery, (error, results) => {
+        if (error) {
+          console.error(`[${index + 1}] Error al actualizar la base de datos: ${error}`);
+        } else {
+          console.log(`[${index + 1}] Actualización exitosa de la base de datos con el valor adicional`);
+        }
+      });
+    })
+    .catch((error) => {
+      console.error(`[${index + 1}] Error al hacer la solicitud HTTP adicional para Amazon: ${error}`);
+    });
+}
+
+function scrapPCEL(url, id, index) {
+  axios.get(url)
+    .then((response) => {
+      const html = response.data;
+      const $ = cheerio.load(html);
+      const priceText = $(".price-new").text(); // Obtener el valor del elemento adicional
+      console.log(priceText);
+      const formattedPriceValue = firstPriceValue.replace(',', ''); // Corregir el formato del precio
+      console.log(formattedPriceValue);
+
+      // Actualizar la base de datos con el valor adicional
+      const updateQuery = `UPDATE amazon SET precio = '${formattedPriceValue}' WHERE id = ${id}`;
+      connection.query(updateQuery, (error, results) => {
+        if (error) {
+          console.error(`[${index + 1}] Error al actualizar la base de datos: ${error}`);
+        } else {
+          console.log(`[${index + 1}] Actualización exitosa de la base de datos con el valor adicional`);
+        }
+      });
+    })
+    .catch((error) => {
+      console.error(`[${index + 1}] Error al hacer la solicitud HTTP adicional para PCEL: ${error}`);
+    });
+}
+
+function scrapCyberpuerta(url, id, index) {
+  axios.get(url)
+    .then((response) => {
+      const html = response.data;
+      const $ = cheerio.load(html);
+      const priceText = $(".priceText").text();
+      const priceNumber = priceText.replace('$', '').replace(',', '');
+      const nameText = $(".detailsInfo_right_title").text().replace(/'/g, "\\'"); // Reemplazar comillas simples para evitar errores SQL
+
+      console.log(`[${index + 1}] ID: ${id}, URL: ${url}, Nombre: ${nameText}, Precio: ${priceText} (${priceNumber})`);
+
+      // Actualizar la base de datos con los nuevos valores
+      const updateQuery = `UPDATE amazon SET precio = '${priceNumber}' WHERE id = ${id}`;
+      connection.query(updateQuery, (error, results) => {
+        if (error) {
+          console.error(`[${index + 1}] Error al actualizar la base de datos: ${error}`);
+        } else {
+          console.log(`[${index + 1}] Actualización exitosa de la base de datos con el valor adicional`);
+        }
+      });
+  })
+  .catch((error) => {
+    console.error(`[${index + 1}] Error al hacer la solicitud HTTP adicional para Cyberpuerta: ${error}`);
   });
 }
