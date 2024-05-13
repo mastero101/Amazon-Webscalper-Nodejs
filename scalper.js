@@ -4,16 +4,16 @@ const cheerio = require("cheerio");
 
 require('dotenv').config();
 
-const connection2 = mysql.createConnection({
+const connection = mysql.createConnection({
   host: process.env.HOST,
   user: process.env.USER,
   password: process.env.PASSWORD,
   database: process.env.DATABASE,
   port: 3306,
-  ssl: true
+  ssl: false
 });
 
-const connection = mysql.createConnection({
+const connection2 = mysql.createConnection({
   host: process.env.HOST2,
   user: process.env.USER2,
   password: process.env.PASSWORD2,
